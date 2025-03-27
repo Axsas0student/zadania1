@@ -1,0 +1,725 @@
+ZAD 1. Wyświetl imię i nazwisko czytelnika (jedna kolumna – DANE CZYTELNIKA) oraz liczbę gatunków pożyczanych przez niego książek. Wyniki posortuj malejąco.
+
+SELECT CONCAT(IMIE, CONCAT(' ', NAZWISKO)) AS "DANE CZYTELNIKA", COUNT(DISTINCT ID_GAT) AS "LICZBA GAT"
+FROM CZYTELNIK LEFT JOIN (WYPOZYCZENIA JOIN KSIAZKA ON WYPOZYCZENIA.ID_KS = KSIAZKA.ID_KS)
+ON CZYTELNIK.ID_CZYT = WYPOZYCZENIA.ID_CZYT
+GROUP BY CONCAT(IMIE, CONCAT(' ', NAZWISKO))
+ORDER BY COUNT(DISTINCT ID_GAT) DESC;
+
+ZAD 2. Wyświetl liczbę książek wydanych przez to wydawnictwo, które wydało najstarszą książkę.
+
+SELECT COUNT (ID_KS)
+FROM  KSIAZKA
+WHERE ID_WYD = (
+        SELECT ID_WYD
+        FROM KSIAZKA
+        WHERE DATA_WYD = (SELECT MIN(DATA_WYD) FROM KSIAZKA)
+        FETCH FIRST 1 ROWS ONLY);
+
+ZAD 3. Wyświetl format książki, który był najczęściej pożyczany w ciągu ostatnich 3 miesięcy.
+
+SELECT FORMAT.F_NAZWA
+FROM WYPOZYCZENIA JOIN (KSIAZKA JOIN FORMAT ON KSIAZKA.ID_FOR=FORMAT.ID_FOR)
+ON WYPOZYCZENIA.ID_KS=KSIAZKA.ID_KS
+WHERE DATA_WYP>=ADD_MONTHS(SYSDATE, -3)
+GROUP BY FORMAT.F_NAZWA
+ORDER BY COUNT(WYPOZYCZENIA.ID_KS) DESC
+FETCH FIRST 1 ROWS ONLY;
+
+ZAD 4. Wyświetl liczbę książek każdego rodzaju oraz sumaryczną cenę dla każdej grupy.
+
+SELECT G_NAZWA, COUNT(ID_KS) AS LICZBA_KSIAZEK, SUM(CENA) AS SUMARYCZNA_CENA
+FROM KSIAZKA JOIN GATUNEK
+ON KSIAZKA.ID_GAT = GATUNEK.ID_GAT
+GROUP BY G_NAZWA;
+
+ZAD 5. Wyświetl nazwę gatunku, który był częściej pożyczany niż średnia liczba pożyczonych książek wszystkich gatunków.
+
+SELECT G_NAZWA AS GATUNEK, COUNT(ID_WYP) AS LICZBA_WYPOZYCZEN
+FROM WYPOZYCZENIA
+JOIN KSIAZKA ON WYPOZYCZENIA.ID_KS = KSIAZKA.ID_KS
+JOIN GATUNEK ON KSIAZKA.ID_GAT = GATUNEK.ID_GAT
+GROUP BY G_NAZWA
+HAVING COUNT(ID_WYP) > (
+    SELECT AVG(LICZBA)
+    FROM (
+        SELECT COUNT(ID_WYP) AS LICZBA
+        FROM WYPOZYCZENIA
+        JOIN KSIAZKA ON WYPOZYCZENIA.ID_KS = KSIAZKA.ID_KS
+        JOIN GATUNEK ON KSIAZKA.ID_GAT = GATUNEK.ID_GAT
+        GROUP BY G_NAZWA
+    )
+);
+
+ZAD 6. Wyświetl wszystkie dane o autorze, który napisał książki tego samego typu, co najcieńsza książka.
+
+SELECT DISTINCT AUTOR.*
+FROM KSIAZKA JOIN AUTOR ON KSIAZKA.ID_AUT=AUTOR.ID_AUT
+WHERE KSIAZKA.ID_GAT = (
+    SELECT ID_GAT
+    FROM KSIAZKA
+    WHERE L_STRON=(SELECT MIN(L_STRON) FROM KSIAZKA));
+
+ZAD 7. Napisz program, który dla podanego przez użytkownika n obliczy wartość wyrażenia n! = 1 * 2 * 3 * ... * n (silnię).
+
+SET SERVEROUTPUT ON;
+DECLARE
+    n NUMBER;
+    wynik NUMBER := 1;
+BEGIN
+    n := &Liczba;
+    IF n < 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Podaj liczbe nieujemna.');
+    ELSIF n = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('0! = 1');
+    ELSE
+        FOR i IN 1..n LOOP
+            wynik := wynik * i;
+        END LOOP;
+        DBMS_OUTPUT.PUT_LINE(n || '! = ' || wynik);
+    END IF;
+END;
+
+ZAD 8. Zdefiniuj zmienną rekordową student w oparciu o typ rekordowy. Zmienna powinna zawierać pola: id, nazwisko, miasto, telefon. Wyświetl przykładowe dane.
+
+SET SERVEROUTPUT ON
+DECLARE
+    TYPE student_rec IS RECORD
+    (
+        id NUMBER(4),
+        Nazwisko VARCHAR2(50),
+        Miasto VARCHAR2(50),
+        Telefon VARCHAR2(15)
+    );
+    
+    student student_rec;
+BEGIN
+    student.id := 1;
+    student.Nazwisko := 'Kowalski';
+    student.Miasto := 'Krakow';
+    student.Telefon := '111-222-333';
+    
+    DBMS_OUTPUT.PUT_LINE('ID: ' || student.id);
+    DBMS_OUTPUT.PUT_LINE('Nazwisko: ' || student.nazwisko);
+    DBMS_OUTPUT.PUT_LINE('Miasto: ' || student.miasto);
+    DBMS_OUTPUT.PUT_LINE('Telefon: ' || student.telefon);
+END;
+
+ZAD 9. Napisz program, który policzy NWD (największy wspólny dzielnik) dwóch podanych z klawiatury liczb.
+
+SET SERVEROUTPUT ON
+DECLARE
+    a NUMBER;
+    b NUMBER;
+    
+    FUNCTION NWD(x NUMBER, y NUMBER) RETURN NUMBER IS
+        ax NUMBER := x;
+        ay NUMBER := y;
+        temp NUMBER;
+    BEGIN
+        WHILE ay != 0 LOOP
+            temp := ax MOD ay;
+            ax := ay;
+            ay := temp;
+        END LOOP;
+        RETURN ax;
+    END NWD;
+    
+BEGIN
+    a := &Liczba1;
+    b := &Liczba2;
+    DBMS_OUTPUT.PUT_LINE('NWD(' || a || ', ' || b || ') = ' || NWD(a, b));
+END;
+
+ZAD 10. Napisz program generujący ciąg n początkowych liczb Fibonacciego.
+
+SET SERVEROUTPUT ON
+DECLARE
+    n NUMBER := &n;
+    a NUMBER := 0;
+    b NUMBER := 1;
+    temp NUMBER;
+BEGIN
+    IF n<1 THEN
+        DBMS_OUTPUT.PUT_LINE('Musi być większe lub równe 1.');
+    ELSE
+        FOR i IN 1..n LOOP
+            DBMS_OUTPUT.PUT_LINE(a);
+            temp := a + b;
+            a := b;
+            b := temp;
+        END LOOP;
+    END IF;
+END;
+
+
+
+
+
+ZAD 1. Napisz program w trzech wariantach, który pobierze dane wszystkich autorów i umieści je w zmiennej rekordowej. W pierwszym wariancie zadeklaruj zmienną jako rekord typu TYPE … IS RECORD, w drugim wykorzystaj atrybut %ROWTYPE, w trzecim wykorzystaj pętlę FOR. Wyświetl wszystkie dane z rekordu.
+
+SET SERVEROUTPUT ON;
+
+DECLARE
+    TYPE author_record IS RECORD (
+        id_aut AUTOR.ID_AUT%TYPE,
+        nazwisko AUTOR.NAZWISKO%TYPE,
+        imie AUTOR.IMIE%TYPE,
+        kraj AUTOR.KRAJ%TYPE
+    );
+    author author_record;
+    CURSOR author_cursor IS SELECT id_aut, nazwisko, imie, kraj FROM AUTOR;
+BEGIN
+    OPEN author_cursor;
+    LOOP
+        FETCH author_cursor INTO author;
+        EXIT WHEN author_cursor%NOTFOUND;
+        
+        DBMS_OUTPUT.PUT_LINE('ID: ' || author.id_aut || ', Nazwisko: ' || author.nazwisko || ', Imię: ' || author.imie || ', Kraj: ' || author.kraj);
+    END LOOP;
+    CLOSE author_cursor;
+
+END;
+
+
+----------------------------------------------------------------------------------------------------------
+
+
+DECLARE
+    author_row AUTOR%ROWTYPE;
+    CURSOR author_cursor IS SELECT * FROM AUTOR;
+BEGIN
+    OPEN author_cursor;
+    LOOP
+        FETCH author_cursor INTO author_row;
+        EXIT WHEN author_cursor%NOTFOUND;
+        
+        DBMS_OUTPUT.PUT_LINE('ID: ' || author_row.ID_AUT || ', Nazwisko: ' || author_row.NAZWISKO || ', Imię: ' || author_row.IMIE || ', Kraj: ' || author_row.KRAJ);
+    END LOOP;
+    CLOSE author_cursor;
+END;
+
+----------------------------------------------------------------------------------------------
+
+
+BEGIN
+    FOR author IN (SELECT * FROM AUTOR) LOOP
+        DBMS_OUTPUT.PUT_LINE('ID: ' || author.ID_AUT || ', Nazwisko: ' || author.NAZWISKO || ', Imię: ' || author.IMIE || ', Kraj: ' || author.KRAJ);
+    END LOOP;
+END;
+
+ZAD 2. Napisz program, który wyświetli imiona, nazwiska czytelników oraz miasto w następującej postaci (wynik powinien być posortowany według nazwisk w kolejności odwrotnej, wszystkie nazwiska dużymi literami, odstępy w postaci wykropkowanej):
+Jan *******NOWAK ********Warszawa
+
+BEGIN
+    FOR reader IN (
+        SELECT
+            IMIE,
+            UPPER(NAZWISKO) AS NAZWISKO,
+            MIASTO
+        FROM CZYTELNIK
+        ORDER BY NAZWISKO DESC
+    ) LOOP
+        DBMS_OUTPUT.PUT_LINE(
+            RPAD(reader.IMIE, 10, '*') ||
+            RPAD(reader.NAZWISKO, 15, '*') ||
+            RPAD(reader.MIASTO, 15, ' ')
+        );
+    END LOOP;
+END;
+
+ZAD 3. Napisz program, który wyświetli imię, nazwisko czytelnika, dzień i miesiąc z daty wypożyczenia (miesiąc w postaci pełnej nazwy miesiąca) oraz tytuł książki i jej format, np.:
+Jan Nowak 04 DECEMBER pan Tadeusz ebook
+
+BEGIN
+    FOR reader IN (
+        SELECT
+            IMIE,
+            NAZWISKO,
+            TO_CHAR(DATA_WYP, 'DD MONTH') a,
+            TYTUL,
+            F_NAZWA
+        FROM CZYTELNIK JOIN WYPOZYCZENIA ON CZYTELNIK.ID_CZYT=WYPOZYCZENIA.ID_CZYT
+        JOIN KSIAZKA ON WYPOZYCZENIA.ID_KS=KSIAZKA.ID_KS
+        JOIN FORMAT ON KSIAZKA.ID_FOR=FORMAT.ID_FOR
+    ) LOOP DBMS_OUTPUT.PUT_LINE(reader.IMIE || ' ' || reader.NAZWISKO || ' ' || reader.a || ' ' || reader.TYTUL || ' ' || reader.F_NAZWA);
+    END LOOP;
+END;
+
+ZAD 4. Napisz program, który wyświetli dane o wszystkich aktualnie wypożyczonych książkach (tytuł, nazwisko autora, nazwę wydawnictwa, data zwrotu), których cena jest większa lub równa niż cena podana przez użytkownika. Skorzystaj z kursora sparametryzowanego. Korzystając z atrybutu %ROWCOUNT ogranicz liczbę wyników do trzech najdroższych pozycji.
+
+DECLARE
+    v_cena_min NUMBER := &Podaj_Cene;
+    CURSOR c_ksiazki(p_cena NUMBER) IS
+        SELECT TYTUL, CONCAT(IMIE, NAZWISKO) a, W_NAZWA, DATA_ZWR, CENA
+        FROM WYPOZYCZENIA
+        JOIN KSIAZKA ON WYPOZYCZENIA.ID_KS = KSIAZKA.ID_KS
+        JOIN AUTOR ON KSIAZKA.ID_AUT=AUTOR.ID_AUT
+        JOIN WYDAWNICTWO ON KSIAZKA.ID_WYD=WYDAWNICTWO.ID_WYD
+        WHERE DATA_ZWR IS NOT NULL AND CENA >= p_cena
+        ORDER BY cena DESC;
+    
+    v_ksiazka c_ksiazki%ROWTYPE;
+BEGIN
+    OPEN c_ksiazki(v_cena_min);
+    
+    FOR i IN 1..3 LOOP
+        FETCH c_ksiazki INTO v_ksiazka;
+        EXIT WHEN c_ksiazki%NOTFOUND;
+        
+        DBMS_OUTPUT.PUT_LINE(
+            'Tytuł: ' || v_ksiazka.TYTUL ||
+            ', Autor: ' || v_ksiazka.a ||
+            ', Wydawnictwo: ' || v_ksiazka.W_NAZWA ||
+            ', Data zwrotu: ' || TO_CHAR(v_ksiazka.DATA_ZWR, 'YYYY-MM-DD') ||
+            ', Cena: ' || TO_CHAR(v_ksiazka.CENA, '9999.99')
+        );
+    END LOOP;
+    
+    CLOSE c_ksiazki;
+END;
+
+ZAD 5. Napisz program, który wyświetli liczbę książek konkretnego formatu oraz nazwę formatu. Wykorzystaj polecenie FETCH do pobierania rekordów z kursora.
+
+W drugim wariancie skorzystaj z parametru (nazwa formatu) i wyświetl liczbę książek dla podanego formatu.
+
+SET SERVEROUTPUT ON;
+
+DECLARE
+    CURSOR c_format IS
+        SELECT f.f_nazwa, COUNT(k.id_ks) AS liczba_ksiazek
+        FROM ksiazka k
+        JOIN format f ON k.id_for = f.id_for
+        GROUP BY f.f_nazwa;
+    
+    v_nazwa_formatu format.f_nazwa%TYPE;
+    v_liczba_ksiazek NUMBER;
+BEGIN
+    OPEN c_format;
+    LOOP
+        FETCH c_format INTO v_nazwa_formatu, v_liczba_ksiazek;
+        EXIT WHEN c_format%NOTFOUND;
+        
+        DBMS_OUTPUT.PUT_LINE(v_nazwa_formatu || ' ' || v_liczba_ksiazek);
+    END LOOP;
+    
+    CLOSE c_format;
+END;
+
+
+-----------------------------------------------------------------------------------------------------------------------------------
+
+SET SERVEROUTPUT ON;
+
+DECLARE
+    v_nazwa_formatu format.f_nazwa%TYPE;
+    v_liczba_ksiazek NUMBER;
+BEGIN
+    v_nazwa_formatu := UPPER('&Podaj_nazwe_formatu');
+
+    SELECT COUNT(k.id_ks)
+    INTO v_liczba_ksiazek
+    FROM ksiazka k
+    JOIN format f ON k.id_for = f.id_for
+    WHERE f.f_nazwa = v_nazwa_formatu;
+    
+    IF v_liczba_ksiazek = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Brak formatu w bazie: ' || v_nazwa_formatu);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE(v_nazwa_formatu || ' ' || v_liczba_ksiazek);
+    END IF;
+END;
+
+ZAD 6. Podnieś cenę wszystkich książek wydanych przez wydawnictwa Litera o 10%, a pozostałych wydawnictw o 5%.
+
+W pierwszym wariancie programu skorzystaj z klauzuli WHERE CURRENT OF (wskazanie rekordu do zmiany ceny).
+
+W wariancie drugim skorzystaj z klauzuli RETURNING INTO (przekazanie zmienionej ceny do zmiennej).
+
+DECLARE
+    CURSOR c_ksiazki IS
+        SELECT k.id_ks, k.cena, w.w_nazwa
+        FROM ksiazka k
+        JOIN wydawnictwo w ON k.id_wyd = w.id_wyd
+        ORDER BY k.id_ks  
+        FOR UPDATE;
+
+    v_nowa_cena ksiazka.cena%TYPE;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('ID | Wydawnictwo | Stara cena | Nowa cena');
+    DBMS_OUTPUT.PUT_LINE('--------------------------------------------');
+
+    FOR r IN c_ksiazki LOOP
+        IF UPPER(r.w_nazwa) = 'LITERA' THEN
+            v_nowa_cena := r.cena * 1.10;
+        ELSE
+            v_nowa_cena := r.cena * 1.05;
+        END IF;
+
+        UPDATE ksiazka
+        SET cena = v_nowa_cena
+        WHERE CURRENT OF c_ksiazki;
+
+        DBMS_OUTPUT.PUT_LINE(r.id_ks || ' | ' || r.w_nazwa || ' | ' || r.cena || ' | ' || v_nowa_cena);
+    END LOOP;
+END;
+
+------------------------------------------------------------------------------------------------------------------------------------------
+
+DECLARE
+    v_nowa_cena ksiazka.cena%TYPE;
+    v_stara_cena ksiazka.cena%TYPE;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('ID | Wydawnictwo | Stara cena | Nowa cena');
+    DBMS_OUTPUT.PUT_LINE('--------------------------------------------');
+
+    FOR r IN (SELECT k.id_ks, k.cena, w.w_nazwa
+              FROM ksiazka k
+              JOIN wydawnictwo w ON k.id_wyd = w.id_wyd
+              WHERE UPPER(w.w_nazwa) = 'LITERA'
+              ORDER BY k.id_ks) LOOP
+        v_stara_cena := r.cena;
+
+        UPDATE ksiazka
+        SET cena = cena * 1.10
+        WHERE id_ks = r.id_ks
+        RETURNING cena INTO v_nowa_cena;
+
+        DBMS_OUTPUT.PUT_LINE(r.id_ks || ' | ' || r.w_nazwa || ' | ' || v_stara_cena || ' | ' || v_nowa_cena);
+    END LOOP;
+
+    FOR r IN (SELECT k.id_ks, k.cena, w.w_nazwa
+              FROM ksiazka k
+              JOIN wydawnictwo w ON k.id_wyd = w.id_wyd
+              WHERE UPPER(w.w_nazwa) <> 'LITERA'
+              ORDER BY k.id_ks) LOOP
+        v_stara_cena := r.cena;
+
+        UPDATE ksiazka
+        SET cena = cena * 1.05
+        WHERE id_ks = r.id_ks
+        RETURNING cena INTO v_nowa_cena;
+
+        DBMS_OUTPUT.PUT_LINE(r.id_ks || ' | ' || r.w_nazwa || ' | ' || v_stara_cena || ' | ' || v_nowa_cena);
+    END LOOP;
+END;
+
+
+
+
+
+
+ZAD 1. Napisz program, który wyświetli nazwisko i imię czytelnika, który miał najmniej wypożyczeń.
+Wprowadź obsługę błędów, jeśli więcej niż jeden czytelnik ma najmniejszą liczbę wypożyczeń.
+
+DECLARE
+    v_min_wyp NUMBER;
+    v_count NUMBER;
+BEGIN
+    SELECT MIN(liczba_wypozyczen) INTO v_min_wyp
+    FROM (
+        SELECT id_czyt, COUNT(*) AS liczba_wypozyczen
+        FROM wypozyczenia
+        GROUP BY id_czyt
+    );
+    
+    SELECT COUNT(*) INTO v_count
+    FROM (
+        SELECT id_czyt
+        FROM wypozyczenia
+        GROUP BY id_czyt
+        HAVING COUNT(*) = v_min_wyp
+    );
+    
+    IF v_count = 1 THEN
+        FOR rec IN (
+            SELECT c.nazwisko, c.imie
+            FROM czytelnik c
+            JOIN (
+                SELECT id_czyt
+                FROM wypozyczenia
+                GROUP BY id_czyt
+                HAVING COUNT(*) = v_min_wyp
+            ) w ON c.id_czyt = w.id_czyt
+        ) LOOP
+            DBMS_OUTPUT.PUT_LINE('Czytelnik z najmniejszą liczbą wypożyczeń: ' || rec.nazwisko || ' ' || rec.imie);
+        END LOOP;
+    ELSE
+        RAISE_APPLICATION_ERROR(-20001, 'Więcej niż jeden czytelnik ma najmniejszą liczbę wypożyczeń.');
+    END IF;
+END;
+
+ZAD 2. Napisz program, który wybierze nazwę gatunku najdroższej książki. Wypisz nazwę gatunku, tytuł książki i cenę. Wprowadź obsługę błędów, jeśli więcej niż jedna książka ma najwyższą cenę.
+
+DECLARE
+    v_max_cena NUMBER;
+    v_count NUMBER;
+BEGIN
+    SELECT MAX(cena) INTO v_max_cena
+    FROM ksiazka;
+    
+    SELECT COUNT(*) INTO v_count
+    FROM ksiazka
+    WHERE cena = v_max_cena;
+    
+    IF v_count = 1 THEN
+        FOR rec IN (
+            SELECT g.g_nazwa, k.tytul, k.cena
+            FROM ksiazka k
+            JOIN gatunek g ON k.id_gat = g.id_gat
+            WHERE k.cena = v_max_cena
+        ) LOOP
+            DBMS_OUTPUT.PUT_LINE('Gatunek: ' || rec.g_nazwa || ', Tytuł: ' || rec.tytul || ', Cena: ' || rec.cena);
+        END LOOP;
+    ELSE
+        RAISE_APPLICATION_ERROR(-20002, 'Więcej niż jedna książka ma najwyższą cenę.');
+    END IF;
+END;
+
+ZAD 3. Utwórz nową tabelę o nazwie AUTOR_LOG, która będzie miała takie same kolumny jak tabela AUTOR, oraz dodatkową kolumnę tekstową o nazwie LOG_OPERATION.
+
+Napisz wyzwalacz, który dla operacji INSERT wykonanej na tabeli AUTOR wstawią do tabeli AUTOR_LOG rekord będący kopią danych wstawianych za pomocą polecenia INSERT. W kolumnie LOG_OPERATION ma pojawić się słowo „INSERT”.
+
+Napisz wyzwalacz, który dla operacji UPDATE wykonanej na tabeli AUTOR wstawią do tabeli AUTOR_LOG rekord będący kopią danych wstawianych za pomocą polecenia UPDATE. W kolumnie LOG_OPERATION ma pojawić się słowo „UPDATE”.
+
+Napisz wyzwalacz, który dla operacji DELETE wykonanej na tabeli AUTOR wstawią do tabeli AUTOR_LOG rekord będący kopią danych wstawianych za pomocą polecenia UPDATE. W kolumnie LOG_OPERATION ma pojawić się słowo „DELETE”.
+
+BEGIN
+    EXECUTE IMMEDIATE 'DROP TABLE autor_log';
+EXCEPTION
+    WHEN OTHERS THEN
+        IF SQLCODE != -942 THEN
+            RAISE;
+        END IF;
+END;
+/
+
+CREATE TABLE autor_log (
+    ID_AUT NUMBER(4,0),
+    NAZWISKO VARCHAR2(30 BYTE),
+    IMIE VARCHAR2(30 BYTE),
+    KRAJ VARCHAR2(30 BYTE),
+    log_operation VARCHAR2(30 BYTE)
+);
+
+-- INSERT
+CREATE OR REPLACE TRIGGER trg_autor_insert
+AFTER INSERT ON autor
+FOR EACH ROW
+BEGIN
+    INSERT INTO autor_log (id_aut, nazwisko, imie, kraj, log_operation)
+    VALUES (:NEW.id_aut, :NEW.nazwisko, :NEW.imie, :NEW.kraj, 'INSERT');
+END;
+/
+
+-- UPDATE
+CREATE OR REPLACE TRIGGER trg_autor_update
+AFTER UPDATE ON autor
+FOR EACH ROW
+BEGIN
+    INSERT INTO autor_log (id_aut, nazwisko, imie, kraj, log_operation)
+    VALUES (:NEW.id_aut, :NEW.nazwisko, :NEW.imie, :NEW.kraj, 'UPDATE');
+END;
+/
+
+-- DELETE
+CREATE OR REPLACE TRIGGER trg_autor_delete
+AFTER DELETE ON autor
+FOR EACH ROW
+BEGIN
+    INSERT INTO autor_log (id_aut, nazwisko, imie, kraj, log_operation)
+    VALUES (:OLD.id_aut, :OLD.nazwisko, :OLD.imie, :OLD.kraj, 'DELETE');
+END;
+
+ZAD 4. Utwórz nowy wyzwalacz dla tabeli AUTOR, który wygeneruje wyjątek gdy użytkownik będzie próbował wstawić do tabeli rekord z Nazwiskiem „Dorian”.
+
+CREATE OR REPLACE TRIGGER trg_autor_block_dorian
+BEFORE INSERT ON autor
+FOR EACH ROW
+BEGIN
+    IF UPPER(:NEW.nazwisko) = 'DORIAN' THEN
+        RAISE_APPLICATION_ERROR(-20003, 'Nie można dodać autora o nazwisku "Dorian".');
+    END IF;
+END;
+
+ZAD 5. Napisz program zwiększający ceny książek o 5%, zaczynając od książek najtańszych. Zmiany należy przerwać, jeśli cena przekroczy 300 zł. 
+
+DECLARE
+    v_max_cena NUMBER;
+BEGIN
+    SELECT MAX(cena) INTO v_max_cena FROM ksiazka;
+
+    WHILE v_max_cena <= 300 LOOP
+        FOR rec IN (
+            SELECT id_ks, cena
+            FROM ksiazka
+            ORDER BY cena ASC
+        ) LOOP
+            UPDATE ksiazka
+            SET cena = cena * 1.05
+            WHERE id_ks = rec.id_ks;
+        END LOOP;
+        
+        SELECT MAX(cena) INTO v_max_cena FROM ksiazka;
+
+        IF v_max_cena > 300 THEN
+            EXIT;
+        END IF;
+    END LOOP;
+
+    --COMMIT;
+END;
+
+
+
+ZAD 1. Napisz funkcję, która dla wybranego gatunku ( parametr id) obliczy sumaryczną cenę wszystkich książek tego gatunku.
+
+CREATE OR REPLACE FUNCTION sumaryczna_cena_ksiazek(p_id_gat NUMBER) RETURN NUMBER IS
+    v_suma NUMBER := 0;
+BEGIN
+    SELECT SUM(cena) INTO v_suma 
+    FROM ksiazka
+    WHERE id_gat = p_id_gat;
+    
+    RETURN v_suma;
+END;
+
+ZAD 2. Zakładamy, że ceny książek w bazie to ceny brutto (z podatkiem), a podatek wynosi 8%. Napisz funkcję, która dla podanego id książki zwróci jej cenę netto. Dodaj obsługę błędów w przypadku braku książki o podanym id oraz w sytuacji kiedy id przypisane jest do więcej niż jednej książki (ma więcej niż jednego autora).
+
+CREATE OR REPLACE FUNCTION cena_netto_ksiazki(p_id_ks NUMBER) RETURN NUMBER IS
+    v_cena_brutto NUMBER;
+    v_cena_netto NUMBER;
+    v_count NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_count FROM ksiazka WHERE id_ks = p_id_ks;
+    
+    IF v_count = 0 THEN
+        RAISE_APPLICATION_ERROR(-20004, 'Nie znaleziono książki o podanym ID.');
+    END IF;
+    
+    SELECT COUNT(*) INTO v_count 
+    FROM ksiazka k
+    JOIN autor_log al ON k.id_ks = al.id_aut
+    WHERE k.id_ks = p_id_ks;
+    
+    IF v_count > 1 THEN
+        RAISE_APPLICATION_ERROR(-20005, 'Książka ma przypisanych wielu autorów.');
+    END IF;
+    
+    SELECT cena INTO v_cena_brutto FROM ksiazka WHERE id_ks = p_id_ks;
+    
+    v_cena_netto := v_cena_brutto / 1.08;
+    
+    RETURN v_cena_netto;
+END;
+
+ZAD 3. Napisz procedurę, która zmodyfikuje cenę książki w zależności od ceny bieżącej: cena > =25 --> cena + 10% 
+cena < 25 --> cena +15%
+
+CREATE OR REPLACE PROCEDURE aktualizuj_cene_ksiazki IS 
+BEGIN
+    UPDATE ksiazka
+    SET cena = cena * 1.10
+    WHERE cena >= 25;
+    
+    UPDATE ksiazka
+    SET cena = cena * 1.15
+    WHERE cena < 25;
+    
+    --COMMIT;
+END;
+
+--wywolanie
+BEGIN
+aktualizuj_cene_ksiazki();
+END;
+
+ZAD 4. Napisz procedurę, w której zostanie wybrana nazwa wydawnictwa, które wydało najstarszą książkę. Wypisz nazwę wydawnictwa, tytuł książki i nazwisko autora. Wprowadź obsługę błędów, jeśli jest więcej niż jedno takie wydawnictwo.
+
+CREATE OR REPLACE PROCEDURE najstarsza IS
+    v_najstarsza DATE;
+    v_count NUMBER;
+BEGIN
+    SELECT MIN(DATA_WYD) INTO v_najstarsza FROM KSIAZKA;
+    
+    SELECT COUNT(DISTINCT id_wyd) INTO v_count
+    FROM ksiazka
+    WHERE data_wyd = v_najstarsza;
+    
+    IF v_count > 1 THEN
+        RAISE_APPLICATION_ERROR(-20006, 'Więcej niż jedno wydawnictwo wydało najstarszą książkę.');
+    END IF;
+    
+    FOR rec IN (
+        SELECT w.W_NAZWA AS WYDAWNICTWO, k.TYTUL, a.NAZWISKO AS NAZWISKO_AUTORA
+        FROM KSIAZKA k 
+        JOIN WYDAWNICTWO w ON k.ID_WYD=w.ID_wyd
+        JOIN AUTOR a ON k.ID_AUT=a.ID_aut
+        WHERE k.DATA_WYD = v_najstarsza
+    ) LOOP
+        DBMS_OUTPUT.PUT_LINE('Wydawnictwo: ' || rec.WYDAWNICTWO || ', Tytuł: ' || rec.tytul || ', Autor: ' || rec.NAZWISKO_AUTORA);
+    END LOOP;
+END;
+
+--wywolanie
+BEGIN
+najstarsza;
+END;
+
+ZAD 5. Utwórz pakiet (sekcja specyfikacji i ciała) składający się z procedury i funkcji opisanych poniżej: 
+1. Napisz funkcję sparametryzowaną (parametry: nazwisko i imię autora), która dla podanego nazwiska i imienia autora zwróci liczbę formatów napisanych przez niego książek.
+2. Napisz procedurę, która wyświetli tytuły książek i nazwiska czytelników, którzy pożyczali książki wydane przez to wydawnictwo, które wydało najmniej książek.
+
+SET SERVEROUTPUT ON;
+
+CREATE OR REPLACE PACKAGE biblioteka_jeden IS
+    FUNCTION liczba_formatow_autora(p_nazwisko VARCHAR2, p_imie VARCHAR2) RETURN NUMBER;
+    PROCEDURE ksiazki_i_czytelnicy_najrzadszego_wydawnictwa;
+END biblioteka_jeden;
+/
+CREATE OR REPLACE PACKAGE BODY biblioteka_jeden IS
+    FUNCTION liczba_formatow_autora(p_nazwisko VARCHAR2, p_imie VARCHAR2) RETURN NUMBER IS
+        v_count NUMBER := 0;
+    BEGIN
+        SELECT COUNT(DISTINCT k.ID_FOR) INTO v_count
+        FROM KSIAZKA k
+        JOIN AUTOR a ON k.ID_AUT = a.ID_AUT
+        WHERE a.NAZWISKO = p_nazwisko AND a.IMIE = p_imie;
+        
+        RETURN v_count;
+    END liczba_formatow_autora;
+    
+    PROCEDURE ksiazki_i_czytelnicy_najrzadszego_wydawnictwa IS
+        v_min_count NUMBER;
+    BEGIN
+        SELECT MIN(liczba_ksiazek) INTO v_min_count
+        FROM (
+            SELECT ID_WYD, COUNT(*) AS liczba_ksiazek
+            FROM KSIAZKA
+            GROUP BY ID_WYD
+        );
+        
+        FOR rec IN (
+            SELECT k.tytul, c.nazwisko
+            FROM wypozyczenia w
+            JOIN ksiazka k ON w.id_ks = k.id_ks
+            JOIN czytelnik c ON w.id_czyt = c.id_czyt
+            WHERE k.id_wyd IN (
+                SELECT id_wyd
+                FROM (
+                    SELECT id_wyd, COUNT(*) AS liczba_ksiazek
+                    FROM ksiazka
+                    GROUP BY id_wyd
+                    HAVING COUNT(*) = v_min_count
+                )
+            )
+        ) LOOP
+            DBMS_OUTPUT.PUT_LINE('Tytuł: ' || rec.tytul || ', Czytelnik: ' || rec.nazwisko);
+        END LOOP;
+    END ksiazki_i_czytelnicy_najrzadszego_wydawnictwa;
+END biblioteka_jeden;
+
+--wywolanie
+BEGIN
+    biblioteka_jeden.ksiazki_i_czytelnicy_najrzadszego_wydawnictwa;
+END;
