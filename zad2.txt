@@ -1,0 +1,65 @@
+Napisz program, który policzy sumaryczną cenę za wszystkie wypożyczone książki dla podanego czytelnika (nazwisko i imię są parametrami kursora).
+Wypisz sumaryczną cenę oraz liczbę wszystkich pożyczonych książek.
+Zaimplementuj obsługę błędów jeśli sumaryczna cena książek będzie większa niż 200 lub liczba pożyczonych książek będzie mniejsza od 3.
+Wykorzystaj polecenie FETCH do pobierania rekordów z kursora.
+
+DECLARE
+-- Parametry wejściowe
+v_imie IT1530.CZYTELNIK.IMIE%TYPE := 'Jan';
+v_nazwisko IT1530.CZYTELNIK.NAZWISKO%TYPE := 'Kowalski';
+
+-- Zmienne pomocnicze
+v_id_czyt IT1530.CZYTELNIK.ID_CZYT%TYPE;
+v_cena IT1530.KSIAZKA.CENA%TYPE;
+v_suma NUMBER := 0;
+v_licznik NUMBER := 0;
+
+-- Kursor
+CURSOR k_ksiazki IS
+SELECT K.CENA
+FROM IT1530.CZYTELNIK C
+JOIN IT1530.WYPOZYCZENIA W ON C.ID_CZYT = W.ID_CZYT
+JOIN IT1530.KSIAZKA K ON W.ID_KS = K.ID_KS
+WHERE C.IMIE = v_imie AND C.NAZWISKO = v_nazwisko;
+
+-- Wyjątki
+ex_cena_za_wysoka EXCEPTION;
+ex_za_malo_ksiazek EXCEPTION;
+BEGIN
+-- Sprawdź, czy czytelnik istnieje
+SELECT ID_CZYT INTO v_id_czyt
+FROM IT1530.CZYTELNIK
+WHERE IMIE = v_imie AND NAZWISKO = v_nazwisko;
+
+-- Otwarcie kursora
+OPEN k_ksiazki;
+LOOP
+FETCH k_ksiazki INTO v_cena;
+EXIT WHEN k_ksiazki%NOTFOUND;
+
+v_suma := v_suma + v_cena;
+v_licznik := v_licznik + 1;
+END LOOP;
+CLOSE k_ksiazki;
+
+-- Obsługa wyjątków
+IF v_suma > 200 THEN
+RAISE ex_cena_za_wysoka;
+ELSIF v_licznik < 3 THEN
+RAISE ex_za_malo_ksiazek;
+END IF;
+
+-- Wynik końcowy
+DBMS_OUTPUT.PUT_LINE('Sumaryczna cena książek: ' || v_suma);
+DBMS_OUTPUT.PUT_LINE('Liczba wypożyczonych książek: ' || v_licznik);
+
+EXCEPTION
+WHEN NO_DATA_FOUND THEN
+DBMS_OUTPUT.PUT_LINE('Czytelnik o podanych danych nie istnieje.');
+WHEN ex_cena_za_wysoka THEN
+DBMS_OUTPUT.PUT_LINE('BŁĄD: suma cen wypożyczonych książek przekracza 200!');
+WHEN ex_za_malo_ksiazek THEN
+DBMS_OUTPUT.PUT_LINE('BŁĄD: liczba wypożyczonych książek jest mniejsza niż 3!');
+WHEN OTHERS THEN
+DBMS_OUTPUT.PUT_LINE('Wystąpił nieoczekiwany błąd: ' || SQLERRM);
+END;
