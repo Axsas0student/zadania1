@@ -1,0 +1,54 @@
+Napisz program (blok anonimowy) wybierający nazwisko i imię czytelnika oraz czas wypożyczenia dla tego czytelnika, który pożyczał książki na najdłuższy okres czasu. Wykorzystaj zapytanie w PL/SQL, zmienną rekordową, wprowadź obsługę błędów jeśli będzie więcej niż jeden taki czytelnik.
+    
+DECLARE
+    TYPE CzytelnikRec IS RECORD (
+        nazwisko  IT1530.CZYTELNIK.NAZWISKO%TYPE,
+        imie      IT1530.CZYTELNIK.IMIE%TYPE,
+        czas_wypozyczenia NUMBER
+    );
+
+    v_czytelnik CzytelnikRec;
+    v_liczba NUMBER;
+
+    -- wyjątek użytkownika
+    TOO_MANY_READERS EXCEPTION;
+BEGIN
+    -- znajdź maksymalny czas wypożyczenia
+    SELECT MAX(DATA_ZWR - DATA_WYP)
+    INTO v_czytelnik.czas_wypozyczenia
+    FROM IT1530.WYPOZYCZENIA;
+
+    -- sprawdź ilu czytelników ma taki maksymalny czas wypożyczenia
+    SELECT COUNT(DISTINCT ID_CZYT)
+    INTO v_liczba
+    FROM IT1530.WYPOZYCZENIA
+    WHERE (DATA_ZWR - DATA_WYP) = v_czytelnik.czas_wypozyczenia;
+
+    IF v_liczba > 1 THEN
+        RAISE TOO_MANY_READERS;
+    ELSE
+        -- pobierz dane tego czytelnika
+        SELECT c.NAZWISKO, c.IMIE
+        INTO v_czytelnik.nazwisko, v_czytelnik.imie
+        FROM IT1530.CZYTELNIK c
+        WHERE c.ID_CZYT = (
+            SELECT w.ID_CZYT
+            FROM IT1530.WYPOZYCZENIA w
+            WHERE (w.DATA_ZWR - w.DATA_WYP) = v_czytelnik.czas_wypozyczenia
+            FETCH FIRST 1 ROWS ONLY
+        );
+
+        DBMS_OUTPUT.PUT_LINE('Czytelnik: ' || v_czytelnik.nazwisko || ' ' || v_czytelnik.imie);
+        DBMS_OUTPUT.PUT_LINE('Czas wypożyczenia: ' || v_czytelnik.czas_wypozyczenia || ' dni');
+    END IF;
+
+EXCEPTION
+    WHEN TOO_MANY_READERS THEN
+        DBMS_OUTPUT.PUT_LINE('Błąd: Więcej niż jeden czytelnik wypożyczał książkę na najdłuższy czas.');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Nieoczekiwany błąd: ' || SQLERRM);
+END;  
+
+
+
+
